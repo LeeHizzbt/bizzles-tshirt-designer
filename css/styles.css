@@ -246,8 +246,9 @@ dl.kv dd dl.kv dd::after { content: ""; display: block; }
   .char-details { display: block; margin-top: 2px; }
   .char-details[open] .char-text { margin-top: 4px; color: var(--fg); }
 }
-.characters-panel { scroll-margin-top: 12px; }
-#pickerPanel, #outputPanel, .view { scroll-margin-top: 8px; }
+.characters-panel { scroll-margin-top: 100px; }
+#pickerPanel, #outputPanel, .view, #results .card { scroll-margin-top: 100px; }
+main { scroll-padding-top: 100px; }
 @media (min-width: 641px) {
   .char-details { display: none !important; }
 }
