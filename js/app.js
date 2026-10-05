@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const BZ = window.BZ, AI = window.BZAI;
-  const VERSION = 'v1.3.3';
+  const VERSION = 'v1.3.4';
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

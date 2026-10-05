@@ -1,9 +1,9 @@
 /* Service worker: offline app shell. Only same-origin GETs are cached; AI API calls are never touched. */
-const CACHE = 'bizzle-designer-v1.3.3';
+const CACHE = 'bizzle-designer-v1.3.4';
 const SHELL = ['./', './index.html', './css/styles.css', './js/fallback-data.js', './js/generator.js', './js/ai.js', './js/app.js',
   './data/trends.json', './manifest.webmanifest', './icons/icon.svg', './img/bizzle.jpg', './img/jinxy.jpg',
-  './icons/icon-v2-192.png', './icons/icon-v2-512.png', './icons/icon-v2-maskable-512.png', './icons/icon-v2-180.png',
-  './icons/favicon-v2.ico', './img/og-v2.jpg'];
+  './icons/icon-v3-192.png', './icons/icon-v3-512.png', './icons/icon-v3-maskable-512.png', './icons/icon-v3-180.png',
+  './icons/favicon-v3.ico', './img/og-v3.jpg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
