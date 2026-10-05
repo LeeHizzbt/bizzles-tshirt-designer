@@ -1,0 +1,22 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+# Python / tooling
+.venv/
+venv/
+__pycache__/
+*.pyc
+node_modules/
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+# Not part of the site
+*.zip
+test-shots/
+packs/
+research/

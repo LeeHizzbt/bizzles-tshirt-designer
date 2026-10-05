@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en" data-theme="orange-black">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bizzle's Ultimate AI Tshirt Designer</title>
+<meta name="description" content="Generate 50 design-only t-shirt image prompts for Gemini and Grok Imagine from trend research. Free, offline-capable, bring-your-own AI key.">
+<meta name="theme-color" content="#000000">
+<meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="frame" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="brand">
+    <svg class="mascot" viewBox="0 0 120 64" width="120" height="64" role="img" aria-label="Bizzle the green alien and Jinxy the orange and white cat">
+      <g><ellipse cx="32" cy="32" rx="24" ry="28" fill="#4ade3a" stroke="#1d7a12" stroke-width="2"/>
+        <path d="M14 30c3-9 13-10 15-3 1 4-2 10-8 10-5 0-8-3-7-7z" fill="#050505"/>
+        <path d="M50 30c-3-9-13-10-15-3-1 4 2 10 8 10 5 0 8-3 7-7z" fill="#050505"/>
+        <path d="M24 47q8 6 16 0" stroke="#0c3d07" stroke-width="2.5" fill="none" stroke-linecap="round"/></g>
+      <g transform="translate(64 6)"><path d="M6 16 2 0l14 9h20l14-9-4 16c4 6 5 12 3 18-3 12-14 20-23 20S8 46 5 34C3 28 3 22 6 16z" fill="#ff8a1f" stroke="#a84800" stroke-width="2"/>
+        <path d="M16 36c4-4 20-4 24 0 2 8-4 16-12 16S14 44 16 36z" fill="#fff"/>
+        <ellipse cx="18" cy="28" rx="4" ry="5" fill="#1b1b1b"/><ellipse cx="38" cy="28" rx="4" ry="5" fill="#1b1b1b"/>
+        <path d="M25 38h6l-3 3z" fill="#ff5c8a"/></g>
+    </svg>
+    <div>
+      <h1>Bizzle's Ultimate <span class="accent">AI Tshirt</span> Designer</h1>
+      <p class="tagline">50 design-only prompts for Gemini &amp; Grok Imagine, from trend research. Shop: <a href="https://www.tshirthut.shop" target="_blank" rel="noopener">tshirthut.shop</a></p>
+    </div>
+  </div>
+  <label class="theme-quick"><span class="sr-only">Site theme</span>
+    <select id="themeQuick" data-bind="theme" aria-label="Site theme"></select>
+  </label>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Main sections">
+  <button role="tab" id="tab-generate" aria-controls="view-generate" aria-selected="true" data-view="generate">🎨 Generate</button>
+  <button role="tab" id="tab-trends" aria-controls="view-trends" aria-selected="false" data-view="trends">📈 Trend Research</button>
+  <button role="tab" id="tab-packs" aria-controls="view-packs" aria-selected="false" data-view="packs">📦 Packs</button>
+  <button role="tab" id="tab-settings" aria-controls="view-settings" aria-selected="false" data-view="settings">⚙️ Settings</button>
+  <button role="tab" id="tab-help" aria-controls="view-help" aria-selected="false" data-view="help">🛠️ Print Tips &amp; Help</button>
+</nav>
+
+<main id="main">
+  <div id="dataBanner" class="banner" role="status"></div>
+
+  <!-- ============ GENERATE ============ -->
+  <section id="view-generate" class="view" role="tabpanel" aria-labelledby="tab-generate">
+    <div class="grid-2">
+      <div class="panel" id="pickerPanel">
+        <h2>1. Pick your trends</h2>
+        <fieldset>
+          <legend>Categories <small class="muted">(multi-select)</small></legend>
+          <div class="chips cat-chips" id="catChips"></div>
+          <p class="hint" id="adultHint"></p>
+        </fieldset>
+        <div class="row">
+          <label class="field">Holiday / season
+            <select class="holiday-select" data-bind="holiday" id="holidaySelect"></select>
+          </label>
+          <label class="field">Theme preset
+            <select data-bind="preset" id="presetSelect"></select>
+          </label>
+        </div>
+        <fieldset>
+          <legend>Subthemes <small class="muted">(from selected categories)</small></legend>
+          <div class="chips" id="subChips"></div>
+        </fieldset>
+        <label class="field">Keywords <small class="muted">(comma separated, optional)</small>
+          <input type="text" id="keywords" data-bind="keywords" placeholder="e.g. tacos, skateboard, full moon" autocomplete="off">
+        </label>
+        <div id="tmWarn" class="warn" role="alert" hidden></div>
+
+        <h2>2. Tune it</h2>
+        <div class="row">
+          <label class="field">How many prompts
+            <input type="number" min="1" max="100" step="1" data-bind="count" id="count" inputmode="numeric">
+          </label>
+          <label class="field">Target generator
+            <select data-bind="target" id="target">
+              <option value="both">Both (Gemini + Grok Imagine)</option>
+              <option value="gemini">Gemini image generator</option>
+              <option value="grok">Grok Imagine</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label class="field">Art style <select data-bind="style" class="style-select" id="styleSelect"></select></label>
+          <label class="field">Text on design
+            <select data-bind="text" id="textMode">
+              <option value="mix">Mix of text &amp; no-text</option>
+              <option value="text">With text / slogan</option>
+              <option value="none">No text (graphic only)</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button class="btn primary big" id="btnGenerate" title="Shortcut: G">⚡ Generate prompts</button>
+          <button class="btn" id="btnReroll" title="New random seed (Shortcut: R)">🎲 Reroll</button>
+          <span class="muted small">Seed: <code id="seedLabel"></code></span>
+        </div>
+
+        <details class="panel-sub" id="aiBox">
+          <summary>🤖 Live AI mode <span class="pill" id="aiPill">no key</span></summary>
+          <p class="small muted">Uses <strong>your own</strong> API key (Settings → AI). Template mode above works with no key.</p>
+          <div class="actions">
+            <button class="btn" id="btnAiWrite">✨ AI: write prompts</button>
+            <button class="btn" id="btnAiUpgrade">🚀 AI: upgrade current prompts</button>
+          </div>
+          <label class="field">Analyze a screenshot or image → design ideas
+            <input type="file" id="imgInput" accept="image/png,image/jpeg,image/webp,image/gif">
+          </label>
+          <div class="row">
+            <label class="field">Ideas from image <input type="number" id="imgCount" min="1" max="20" value="6"></label>
+            <div class="field"><span>&nbsp;</span><button class="btn" id="btnAnalyze">🔍 Analyze image</button></div>
+          </div>
+          <img id="imgPreview" alt="Uploaded image preview" hidden>
+          <div id="aiStatus" class="ai-status" role="status" aria-live="polite"></div>
+          <div id="imgAnalysis" class="analysis" hidden></div>
+        </details>
+
+        <details class="panel-sub" id="specInfo">
+          <summary>📐 Print spec block (appended to every prompt)</summary>
+          <label class="toggle"><input type="checkbox" data-bind="spec"> Append spec block</label>
+          <pre id="specPre" class="spec"></pre>
+          <p class="small muted">Added by code after every template <em>and</em> AI prompt, never trusted to the AI.</p>
+        </details>
+      </div>
+
+      <div class="panel" id="outputPanel">
+        <div class="out-head">
+          <h2>3. Your prompts <span class="count-badge" id="outCount">0</span></h2>
+          <div class="toolbar" role="toolbar" aria-label="Output actions">
+            <button class="btn" id="btnCopyAll" title="Shortcut: C">📋 Copy all</button>
+            <button class="btn" id="btnExportMd">⬇ .md</button>
+            <button class="btn" id="btnExportCsv">⬇ .csv</button>
+            <button class="btn" id="btnExportTxt">⬇ .txt</button>
+            <button class="btn" id="btnSavePack" title="Shortcut: S">💾 Save pack</button>
+            <button class="btn" id="btnShare">🔗 Share link</button>
+            <label class="toggle small"><input type="checkbox" id="onlyFav"> ★ only</label>
+          </div>
+        </div>
+        <div id="results" class="results" aria-live="polite">
+          <p class="empty">Pick some categories and hit <strong>Generate</strong>. Works fully offline with no API key.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRENDS ============ -->
+  <section id="view-trends" class="view" role="tabpanel" aria-labelledby="tab-trends" hidden>
+    <div class="panel">
+      <h2>📅 Upcoming holidays &amp; sell windows</h2>
+      <p class="small muted">Computed from today's date (<span id="todayLabel"></span>). Print-on-demand needs lead time: list designs before the sell window opens.</p>
+      <div id="upcoming" class="upcoming" tabindex="0" aria-label="Upcoming holidays"></div>
+    </div>
+    <div class="panel">
+      <div class="out-head">
+        <h2>🔎 Trend Research</h2>
+        <label class="field inline"><span class="sr-only">Search trends</span><input type="search" id="trendSearch" placeholder="Search categories, motifs, holidays…"></label>
+      </div>
+      <p class="small muted">Badges: <span class="badge sourced">Sourced</span> backed by a cited source · <span class="badge inferred">Inferred</span> reasoned from sources · <span class="badge unverified">Unverified</span> source couldn't be confirmed · <span class="badge example">Example/template</span> placeholder, not research. Filter in Settings → Trend sources.</p>
+      <h3>Categories</h3>
+      <div id="trendCats" class="cards-grid"></div>
+      <h3>Holidays</h3>
+      <div id="trendHols" class="cards-grid"></div>
+      <h3>Styles</h3>
+      <div id="trendStyles" class="cards-grid"></div>
+      <h3>Palettes</h3>
+      <div id="trendPalettes" class="palettes"></div>
+      <h3>AI theme presets</h3>
+      <div id="trendThemes" class="cards-grid"></div>
+    </div>
+    <div class="panel" id="extrasPanel" hidden>
+      <h2>📏 Generator limits, Fourthwall specs &amp; workflow (from research)</h2>
+      <div id="trendExtras" class="cards-grid wide"></div>
+      <div id="houseTplBox" hidden>
+        <h3>Research house prompt template</h3>
+        <p class="small muted">Used when Settings → Prompt format = "House template". The spec block is still appended by code.</p>
+        <pre id="houseTpl" class="spec"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PACKS ============ -->
+  <section id="view-packs" class="view" role="tabpanel" aria-labelledby="tab-packs" hidden>
+    <div class="panel">
+      <h2>📦 Saved prompt packs</h2>
+      <p class="small muted">Stored in this browser only (localStorage). Export a backup to move them between devices.</p>
+      <div class="row">
+        <label class="field">Pack name <input type="text" id="packName" placeholder="e.g. Halloween aliens v1" maxlength="80"></label>
+        <div class="field"><span>&nbsp;</span><button class="btn primary" id="btnSavePack2">💾 Save current prompts</button></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="btnExportPacks">⬇ Export all packs (.json)</button>
+        <label class="btn file-btn">⬆ Import packs (.json)<input type="file" id="importPacks" accept="application/json,.json"></label>
+      </div>
+      <ul id="packList" class="pack-list"></ul>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="view-settings" class="view" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <div class="grid-2">
+      <div class="panel">
+        <h2>🎛️ Generator settings</h2>
+        <div class="row">
+          <label class="field">Prompt count (1–100) <input type="number" min="1" max="100" data-bind="count" id="set-count"></label>
+          <label class="field">Target generator
+            <select data-bind="target" id="set-target">
+              <option value="both">Both (Gemini + Grok Imagine)</option>
+              <option value="gemini">Gemini image generator</option>
+              <option value="grok">Grok Imagine</option>
+            </select></label>
+        </div>
+        <fieldset><legend>Categories</legend><div class="chips cat-chips" id="setCatChips"></div></fieldset>
+        <div class="row">
+          <label class="field">Holiday <select class="holiday-select" data-bind="holiday" id="set-holiday"></select></label>
+          <label class="field">Art style <select class="style-select" data-bind="style" id="set-style"></select></label>
+        </div>
+        <div class="row">
+          <label class="field">Aspect ratio
+            <select data-bind="aspect" id="set-aspect">
+              <option value="3:4">3:4 (matches 12×16 print)</option>
+              <option value="2:3">2:3</option>
+              <option value="4:5">4:5</option>
+              <option value="1:1">1:1</option>
+              <option value="9:16">9:16</option>
+            </select></label>
+          <label class="field">Color palette <select data-bind="palette" id="set-palette"></select></label>
+        </div>
+        <div class="row">
+          <label class="field">Text vs no-text
+            <select data-bind="text" id="set-text">
+              <option value="mix">Mix</option><option value="text">With text</option><option value="none">No text</option>
+            </select></label>
+          <label class="field">Bizzle &amp; Jinxy mascots
+            <select data-bind="mascots" id="set-mascots">
+              <option value="some">Sometimes</option><option value="always">Always</option><option value="off">Never</option>
+            </select></label>
+        </div>
+        <div class="row">
+          <label class="field">Prompt language
+            <select data-bind="lang" id="set-lang"></select></label>
+          <label class="field">Default export format
+            <select data-bind="exportFmt" id="set-export">
+              <option value="md">Markdown (.md)</option><option value="csv">CSV (.csv)</option><option value="txt">Text (.txt)</option>
+            </select></label>
+        </div>
+        <label class="field">Prompt format
+          <select data-bind="format" id="set-format">
+            <option value="varied">Varied templates, tuned per generator (default)</option>
+            <option value="house" id="formatHouseOpt">House template from research (orange border panel, white outside)</option>
+          </select></label>
+        <label class="field">Seed (same seed + settings = same prompts)
+          <input type="text" data-bind="seed" id="set-seed" maxlength="40"></label>
+        <label class="toggle"><input type="checkbox" data-bind="spec" id="set-spec"> Append print spec block to every prompt</label>
+        <label class="toggle"><input type="checkbox" data-bind="avoid" id="set-avoid"> Add avoid list (no mockups, trademarks, celebrity likeness…)</label>
+      </div>
+
+      <div class="panel">
+        <h2>🧪 Content</h2>
+        <label class="field">Trend sources to show
+          <select data-bind="source" id="set-source">
+            <option value="all">All (Sourced, Inferred, Unverified, Example)</option>
+            <option value="inferred">Sourced + Inferred (hide Unverified/Example)</option>
+            <option value="sourced">Only Sourced</option>
+          </select></label>
+        <label class="toggle"><input type="checkbox" data-bind="adult" id="set-adult"> 18+: show adult categories (420 / cannabis, adult humor)</label>
+        <p class="hint small">Off by default. Only turn on if you are 18+ (21+ where required) and cannabis designs are legal for you to sell.</p>
+
+        <h2>🎨 Site theme</h2>
+        <div id="themeGrid" class="theme-grid" role="radiogroup" aria-label="Site theme"></div>
+
+        <h2>🤖 AI provider (optional, bring your own key)</h2>
+        <label class="field">Provider
+          <select data-bind="provider" id="set-provider">
+            <option value="gemini">Google Gemini (free tier via Google AI Studio)</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="groq">Groq</option>
+          </select></label>
+        <label class="field">Model name <input type="text" id="set-model" list="modelList" autocomplete="off" spellcheck="false"></label>
+        <datalist id="modelList"></datalist>
+        <label class="field">API key <input type="password" id="set-key" autocomplete="off" spellcheck="false" placeholder="Paste your key"></label>
+        <div class="actions">
+          <button class="btn primary" id="btnSaveKey">Save key</button>
+          <button class="btn danger" id="btnForgetKey">Forget key</button>
+          <button class="btn" id="btnShowKey" aria-pressed="false">Show</button>
+        </div>
+        <p class="note small" id="keyNote">🔒 Your key is stored only in this browser's localStorage. It never leaves your browser except to call the provider's API directly (e.g. generativelanguage.googleapis.com). This site has no server, no analytics, no trackers. Never share a link that contains your key (share links never include it).</p>
+        <p class="small" id="providerHelp"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HELP ============ -->
+  <section id="view-help" class="view" role="tabpanel" aria-labelledby="tab-help" hidden>
+    <div class="grid-2">
+      <div class="panel">
+        <h2>🖨️ Print-prep tips (Fourthwall, black tee)</h2>
+        <ol class="tips">
+          <li><strong>AI images are smaller than 3600×4800 px.</strong> Gemini (Nano Banana 2 / Pro) maxes out at <strong>3584×4800 at 4K, 3:4</strong>, which is 16 px too narrow, so pad or resample to 3600. Every Gemini image carries an invisible <strong>SynthID watermark</strong>. Grok Imagine outputs 1k or 2k, so upscale at least 2× for 300 DPI and about 4–5× for 600 DPI.</li>
+          <li><strong>Neither generator outputs real transparency</strong>, even when the prompt asks for a "transparent PNG". Ask for a flat, pure-white (or solid) background outside the orange border, then remove it yourself. The <strong>Grok app (grok.com/imagine)</strong> has a built-in background-removal tool that exports a transparent PNG. The API does not.</li>
+          <li><strong>Remove the background</strong> for free with <a href="https://github.com/danielgatis/rembg" target="_blank" rel="noopener">rembg</a> (code is MIT). ⚠️ Its <strong>default model (bria-rmbg / RMBG-2.0) needs a paid BRIA agreement for commercial use</strong>, so pick a permissive model instead, e.g. <code>rembg i -m birefnet-general in.png out.png</code> (or <code>isnet-general-use</code> / <code>u2net</code>), and check that model's weights license. Photopea's magic wand or GIMP flood-fill also works on a flat white background.</li>
+          <li><strong>Upscale</strong> 2–4× with <a href="https://upscayl.org" target="_blank" rel="noopener">Upscayl</a> (free, local, AGPL). For pixel art use nearest-neighbor instead, because AI upscalers smooth it. Then fit the canvas to <strong>3600×4800 px at 300 DPI</strong> (or 7200×9600 at 600 DPI) and set the DPI metadata.</li>
+          <li><strong>Kill halos:</strong> threshold the alpha channel and check edges at 100% zoom on a black preview. Leftover white fringe shows badly on black fabric.</li>
+          <li><strong>Export PNG, sRGB</strong>, transparent, ≤200 MB. No JPG (no transparency, and it adds artifacts). Fourthwall's help pages disagree on CMYK vs sRGB and on 300 vs 200 DPI (see Trend Research → Fourthwall specs), so sRGB PNG at 300 DPI+ is the safe choice. Order a sample.</li>
+          <li><strong>Black tees:</strong> avoid glows, soft gradients, and semi-transparency. Thick outlines and bright solid colors print best. Fourthwall's help pages say DTFx gives brighter results on dark shirts.</li>
+          <li><strong>Text:</strong> AI often misspells. Proofread, then fix it with an edit pass or in Photopea/Inkscape. Keep text at least ~4 pt / 1 mm.</li>
+          <li><strong>Legal:</strong> no trademarks, logos, characters, or celebrity likeness. Original art only (Fourthwall's Acceptable Use Policy).</li>
+        </ol>
+        <h3>🚫 Avoid list (added to prompts when enabled)</h3>
+        <p id="avoidList" class="small"></p>
+      </div>
+      <div class="panel">
+        <h2>⌨️ Keyboard shortcuts</h2>
+        <table class="kbd-table">
+          <tbody>
+            <tr><td><kbd>G</kbd></td><td>Generate</td></tr>
+            <tr><td><kbd>R</kbd></td><td>Reroll (new seed)</td></tr>
+            <tr><td><kbd>C</kbd></td><td>Copy all prompts</td></tr>
+            <tr><td><kbd>S</kbd></td><td>Save as pack</td></tr>
+            <tr><td><kbd>E</kbd></td><td>Export (default format)</td></tr>
+            <tr><td><kbd>T</kbd></td><td>Next site theme</td></tr>
+            <tr><td><kbd>/</kbd></td><td>Focus keywords</td></tr>
+            <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Switch tabs</td></tr>
+            <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+          </tbody>
+        </table>
+        <h2>🔑 Free Gemini key (optional)</h2>
+        <ol class="tips small">
+          <li>Go to <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → API keys</a> and sign in.</li>
+          <li>Create an API key and paste it in Settings → AI. Free tier has rate limits; if you hit them you'll see a friendly "quota" message.</li>
+          <li>Free-tier prompts may be used by Google to improve products. Don't upload private images.</li>
+        </ol>
+        <h2>📲 Install</h2>
+        <p class="small">This is a PWA: use your browser's "Install app" / "Add to Home Screen". Template mode works offline.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p><strong>Disclaimer:</strong> Trend items are labeled <span class="badge sourced">Sourced</span>, <span class="badge inferred">Inferred</span>, <span class="badge unverified">Unverified</span>, or <span class="badge example">Example/template</span>. Check the evidence links; trends change fast and nothing here guarantees sales. AI mode uses <em>your own</em> key, stored only in your browser. Not affiliated with, endorsed by, or sponsored by Fourthwall, Google, xAI, OpenRouter, or Groq; product names belong to their owners. Always make sure your designs don't infringe trademarks or likeness rights.</p>
+  <p>Made for <a href="https://www.tshirthut.shop" target="_blank" rel="noopener">Bizzle's Tshirt Hut</a> 👽🐱 · No trackers · <span id="versionLabel"></span></p>
+</footer>
+
+<dialog id="briefDialog" aria-labelledby="briefTitle">
+  <form method="dialog" class="dialog-inner">
+    <h2 id="briefTitle">Design brief</h2>
+    <div id="briefBody"></div>
+    <div class="actions">
+      <button class="btn" type="button" id="btnCopyBrief">📋 Copy brief</button>
+      <button class="btn primary" value="close">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="shareDialog" aria-labelledby="shareTitle">
+  <form method="dialog" class="dialog-inner">
+    <h2 id="shareTitle">Share these settings</h2>
+    <p class="small muted">The link encodes your settings and seed (never your API key or 18+ toggle). Friends get the same prompts.</p>
+    <input type="text" id="shareUrl" readonly aria-label="Share URL">
+    <div class="actions">
+      <button class="btn" type="button" id="btnCopyShare">📋 Copy link</button>
+      <button class="btn primary" value="close">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="js/fallback-data.js"></script>
+<script src="js/generator.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
