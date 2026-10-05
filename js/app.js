@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const BZ = window.BZ, AI = window.BZAI;
-  const VERSION = 'v1.3.1';
+  const VERSION = 'v1.3.2';
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,7 +29,7 @@
     count: 50, categories: null, holiday: '', subthemes: [], keywords: '', preset: '', style: 'mix', target: 'both', aspect: '3:4',
     palette: 'mix', text: 'mix', mascots: 'off', avoid: true, source: 'all', adult: false, lang: 'English', spec: true,
     provider: 'gemini', models: {}, exportFmt: 'md', theme: 'orange-black', seed: '', format: 'varied',
-    charactersOn: true, charactersOnExplicit: false, characterIds: null
+    charactersOn: false, charactersOnExplicit: false, characterIds: null
   };
   const SHARE_KEYS = ['format', 'count', 'categories', 'holiday', 'subthemes', 'keywords', 'preset', 'style', 'target', 'aspect', 'palette', 'text', 'avoid', 'lang', 'spec', 'theme', 'seed', 'source', 'charactersOn', 'characterIds'];
 
@@ -49,9 +49,10 @@
     if (!state.settings.characterIds.length) state.settings.characterIds = state.characters.map(c => c.id);
   }
   if (typeof state.settings.charactersOnExplicit !== 'boolean') state.settings.charactersOnExplicit = false;
-  // Default ON for new visitors and anyone who never explicitly toggled Characters.
-  if (!state.settings.charactersOnExplicit) state.settings.charactersOn = true;
-  else if (typeof state.settings.charactersOn !== 'boolean') state.settings.charactersOn = true;
+  // Default OFF for new visitors and anyone who never explicitly toggled Characters.
+  // Explicit ON (charactersOnExplicit + charactersOn) is preserved.
+  if (!state.settings.charactersOnExplicit) state.settings.charactersOn = false;
+  else if (typeof state.settings.charactersOn !== 'boolean') state.settings.charactersOn = false;
   // Persist migrated defaults so the new text sticks for unedited users
   if (_charLoad.migrated) LS.set(K.characters, { version: state.charVersion, characters: state.characters });
   window.__bizzle = state; // handy for debugging/tests
@@ -530,7 +531,7 @@
         state.settings.charactersOn = !!state.settings.charactersOn;
         state.settings.charactersOnExplicit = true;
       } else if (!state.settings.charactersOnExplicit) {
-        state.settings.charactersOn = true;
+        state.settings.charactersOn = false;
       }
       if (Array.isArray(state.settings.characterIds)) {
         const valid = new Set(state.characters.map(c => c.id));
