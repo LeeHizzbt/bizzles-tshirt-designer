@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const BZ = window.BZ, AI = window.BZAI;
-  const VERSION = 'v1.3.0';
+  const VERSION = 'v1.3.1';
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,7 +29,7 @@
     count: 50, categories: null, holiday: '', subthemes: [], keywords: '', preset: '', style: 'mix', target: 'both', aspect: '3:4',
     palette: 'mix', text: 'mix', mascots: 'off', avoid: true, source: 'all', adult: false, lang: 'English', spec: true,
     provider: 'gemini', models: {}, exportFmt: 'md', theme: 'orange-black', seed: '', format: 'varied',
-    charactersOn: false, characterIds: null
+    charactersOn: true, charactersOnExplicit: false, characterIds: null
   };
   const SHARE_KEYS = ['format', 'count', 'categories', 'holiday', 'subthemes', 'keywords', 'preset', 'style', 'target', 'aspect', 'palette', 'text', 'avoid', 'lang', 'spec', 'theme', 'seed', 'source', 'charactersOn', 'characterIds'];
 
@@ -48,7 +48,10 @@
     // If migration replaced the cast and left no valid ids, default to all
     if (!state.settings.characterIds.length) state.settings.characterIds = state.characters.map(c => c.id);
   }
-  if (typeof state.settings.charactersOn !== 'boolean') state.settings.charactersOn = false;
+  if (typeof state.settings.charactersOnExplicit !== 'boolean') state.settings.charactersOnExplicit = false;
+  // Default ON for new visitors and anyone who never explicitly toggled Characters.
+  if (!state.settings.charactersOnExplicit) state.settings.charactersOn = true;
+  else if (typeof state.settings.charactersOn !== 'boolean') state.settings.charactersOn = true;
   // Persist migrated defaults so the new text sticks for unedited users
   if (_charLoad.migrated) LS.set(K.characters, { version: state.charVersion, characters: state.characters });
   window.__bizzle = state; // handy for debugging/tests
@@ -192,8 +195,13 @@
     return BZ.buildCharacterBlock(state.characters, checkedCharacterIds());
   }
   /** Assemble final prompt: body → Character details (if on) → spec block (last). De-dupe AI echoes. */
+  function activeCharNames() {
+    if (!state.settings.charactersOn) return [];
+    return checkedCharacterIds().map(id => { const c = state.characters.find(x => x.id === id); return c ? c.name : ''; }).filter(Boolean);
+  }
   function fullText(item, v) {
     let body = BZ.stripCharacterSection(AI.stripSpec((item.variants[v] || '').trim()));
+    body = BZ.rewriteNoTextClauses(body, activeCharNames());
     const parts = [];
     if (body) parts.push(body);
     const chars = characterBlock();
@@ -204,6 +212,7 @@
   function saveCharacters() { LS.set(K.characters, { version: state.charVersion || BZ.CHAR_DEFAULTS_VERSION, characters: state.characters }); }
   function setCharactersOn(on, opts) {
     state.settings.charactersOn = !!on;
+    state.settings.charactersOnExplicit = true;
     saveSettings();
     syncCharUI();
     if (!(opts && opts.skipRender)) renderResults();
@@ -287,7 +296,8 @@
       count: s.count, seed: s.seed, categories: cats, holiday: hol, subthemes: s.subthemes || [],
       keywords: (s.keywords || '').split(',').map(x => x.trim()).filter(Boolean), preset: state.data.themes.filter(passesSourceSoft).find(t => t.id === s.preset) || null,
       styles: state.data.styles.filter(passesSourceSoft), style: s.style, palettes: state.data.palettes.filter(passesSourceSoft), palette: s.palette, text: s.text, mascots: 'off',
-      target: s.target, aspect: s.aspect, lang: s.lang, avoid: !!s.avoid, format: s.format
+      target: s.target, aspect: s.aspect, lang: s.lang, avoid: !!s.avoid, format: s.format,
+      charNames: s.charactersOn ? activeCharNames() : []
     }, extra || {});
   }
   function generate() {
@@ -459,7 +469,10 @@
       state.items = JSON.parse(JSON.stringify(p.items)); renumber(); saveCurrent();
       // Restore character toggle / selection saved with the pack so prompts still include the section.
       if (p.settings && typeof p.settings === 'object') {
-        if (typeof p.settings.charactersOn === 'boolean') state.settings.charactersOn = p.settings.charactersOn;
+        if (typeof p.settings.charactersOn === 'boolean') {
+          state.settings.charactersOn = p.settings.charactersOn;
+          state.settings.charactersOnExplicit = true;
+        }
         if (Array.isArray(p.settings.characterIds)) {
           const valid = new Set(state.characters.map(c => c.id));
           state.settings.characterIds = p.settings.characterIds.filter(id => valid.has(id));
@@ -513,7 +526,12 @@
       const o = JSON.parse(b64urlDecode(m[1]));
       SHARE_KEYS.forEach(k => { if (o[k] !== undefined) state.settings[k] = o[k]; });
       state.settings.count = Math.max(1, Math.min(100, parseInt(state.settings.count, 10) || 50));
-      state.settings.charactersOn = !!state.settings.charactersOn;
+      if (o.charactersOn !== undefined) {
+        state.settings.charactersOn = !!state.settings.charactersOn;
+        state.settings.charactersOnExplicit = true;
+      } else if (!state.settings.charactersOnExplicit) {
+        state.settings.charactersOn = true;
+      }
       if (Array.isArray(state.settings.characterIds)) {
         const valid = new Set(state.characters.map(c => c.id));
         state.settings.characterIds = state.settings.characterIds.filter(id => valid.has(id));

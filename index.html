@@ -32,29 +32,30 @@
   </label>
 </header>
 
-<nav class="tabs" role="tablist" aria-label="Main sections">
-  <button role="tab" id="tab-generate" aria-controls="view-generate" aria-selected="true" data-view="generate">🎨 Generate</button>
-  <button role="tab" id="tab-trends" aria-controls="view-trends" aria-selected="false" data-view="trends">📈 Trend Research</button>
-  <button role="tab" id="tab-packs" aria-controls="view-packs" aria-selected="false" data-view="packs">📦 Packs</button>
-  <button role="tab" id="tab-settings" aria-controls="view-settings" aria-selected="false" data-view="settings">⚙️ Settings</button>
-  <button role="tab" id="tab-help" aria-controls="view-help" aria-selected="false" data-view="help">🛠️ Print Tips &amp; Help</button>
-</nav>
-
-<div class="char-bar" id="charBar" aria-live="polite">
-  <div class="char-bar-inner">
-    <button type="button" class="char-bar-toggle" id="charBarToggle" aria-pressed="false" title="Toggle: add characters to every prompt">
-      <span class="char-bar-dot" aria-hidden="true"></span>
-      <span class="char-bar-label">Characters <strong id="charBarState">OFF</strong></span>
-    </button>
-    <button type="button" class="char-bar-menu" id="charBarMenu" aria-expanded="false" aria-controls="charBarPopover" title="Pick characters" aria-label="Open character picker">▾</button>
-  </div>
-  <div class="char-bar-popover" id="charBarPopover" hidden role="dialog" aria-label="Character picker">
-    <div class="char-bar-pop-head">
-      <label class="toggle small"><input type="checkbox" id="charBarMaster" data-char-master> Add to every prompt</label>
-      <button type="button" class="btn tiny" id="charBarClose" aria-label="Close character picker">✕</button>
+<div class="tabs-wrap" id="tabsWrap">
+  <nav class="tabs" role="tablist" aria-label="Main sections">
+    <button role="tab" id="tab-generate" aria-controls="view-generate" aria-selected="true" data-view="generate">🎨 Generate</button>
+    <button role="tab" id="tab-trends" aria-controls="view-trends" aria-selected="false" data-view="trends">📈 Trend Research</button>
+    <button role="tab" id="tab-packs" aria-controls="view-packs" aria-selected="false" data-view="packs">📦 Packs</button>
+    <button role="tab" id="tab-settings" aria-controls="view-settings" aria-selected="false" data-view="settings">⚙️ Settings</button>
+    <button role="tab" id="tab-help" aria-controls="view-help" aria-selected="false" data-view="help">🛠️ Print Tips &amp; Help</button>
+  </nav>
+  <div class="char-bar" id="charBar" aria-live="polite">
+    <div class="char-bar-inner">
+      <button type="button" class="char-bar-toggle" id="charBarToggle" aria-pressed="false" title="Toggle: add characters to every prompt">
+        <span class="char-bar-dot" aria-hidden="true"></span>
+        <span class="char-bar-label">Characters <strong id="charBarState">OFF</strong></span>
+      </button>
+      <button type="button" class="char-bar-menu" id="charBarMenu" aria-expanded="false" aria-controls="charBarPopover" title="Pick characters" aria-label="Open character picker">▾</button>
     </div>
-    <div class="char-bar-list" id="charBarList"></div>
-    <button type="button" class="btn tiny" id="charBarEdit">✏️ Edit characters</button>
+    <div class="char-bar-popover" id="charBarPopover" hidden role="dialog" aria-label="Character picker">
+      <div class="char-bar-pop-head">
+        <label class="toggle small"><input type="checkbox" id="charBarMaster" data-char-master> Add to every prompt</label>
+        <button type="button" class="btn tiny" id="charBarClose" aria-label="Close character picker">✕</button>
+      </div>
+      <div class="char-bar-list" id="charBarList"></div>
+      <button type="button" class="btn tiny" id="charBarEdit">✏️ Edit characters</button>
+    </div>
   </div>
 </div>
 

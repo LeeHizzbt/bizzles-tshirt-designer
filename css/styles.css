@@ -40,7 +40,8 @@ h1 { font-size: clamp(1.25rem, 4.5vw, 2rem); margin: 0; line-height: 1.15; lette
 .tagline { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
 .theme-quick select { min-width: 170px; }
 
-.tabs { display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px; position: sticky; top: 0; z-index: 20; background: var(--bg); scrollbar-width: thin; }
+.tabs-wrap { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 0 0 6px; border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent); }
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px 4px; scrollbar-width: thin; }
 .tabs button { flex: none; background: var(--bg2); color: var(--fg); border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: .92rem; cursor: pointer; min-height: 40px; }
 .tabs button[aria-selected="true"] { background: var(--accent); color: var(--btn-fg); font-weight: 700; }
 
@@ -174,10 +175,10 @@ dl.kv dd dl.kv dd::after { content: ""; display: block; }
 .banner p { margin: 6px 0 0; }
 
 
-/* ---- Characters panel + sticky bar ---- */
+/* ---- Characters panel + sticky bar (lives inside .tabs-wrap so it never covers content) ---- */
 .char-bar {
-  position: sticky; top: 48px; z-index: 19; display: flex; justify-content: flex-end;
-  padding: 0 12px; pointer-events: none; margin: -2px 0 4px;
+  position: relative; z-index: 21; display: flex; justify-content: flex-end;
+  padding: 0 12px 2px; pointer-events: none; margin: 0;
 }
 .char-bar-inner {
   pointer-events: auto; display: inline-flex; align-items: stretch; gap: 0;
@@ -244,8 +245,9 @@ dl.kv dd dl.kv dd::after { content: ""; display: block; }
   .char-text-desktop { display: none; }
   .char-details { display: block; margin-top: 2px; }
   .char-details[open] .char-text { margin-top: 4px; color: var(--fg); }
-  .char-bar { top: 44px; }
 }
+.characters-panel { scroll-margin-top: 12px; }
+#pickerPanel, #outputPanel, .view { scroll-margin-top: 8px; }
 @media (min-width: 641px) {
   .char-details { display: none !important; }
 }

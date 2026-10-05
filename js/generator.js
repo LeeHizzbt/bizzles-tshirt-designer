@@ -232,7 +232,8 @@
     const font = rng.pick(FONTS);
     const it = { id: 'p' + Math.floor(rng() * 1e9).toString(36), category: cat.id, catName: cat.name, motif, subtheme: sub, style, palette: pal.name,
       paletteColors: pal.colors || [], composition, mods, holiday: o.hol ? o.hol.name : '', holidayMotif, keyword, mascot, preset: presetMotif,
-      phrase, font, humor: '', detail: '', background: rng.pick(BACKGROUNDS), format: o.format || 'varied', source: 'template', fav: false, aspect: o.aspect, lang: o.lang, target: o.target, avoid: o.avoid, stylePrompt };
+      phrase, font, humor: '', detail: '', background: rng.pick(BACKGROUNDS), format: o.format || 'varied', source: 'template', fav: false, aspect: o.aspect, lang: o.lang, target: o.target, avoid: o.avoid, stylePrompt,
+      charNames: Array.isArray(o.charNames) ? o.charNames.slice() : [] };
     it.variants = renderVariants(it, rng);
     it.title = makeTitle(it);
     return it;
@@ -253,14 +254,14 @@
     const style = it.stylePrompt || it.style;
     let t = HOUSE_TEMPLATE;
     if (it.phrase) t = t.replace('{text}', it.phrase).replace('{font_style}', it.font);
-    else t = t.replace(/^.*\{text\}.*$/m, 'Text: none. No letters, numbers or words anywhere.');
+    else t = t.replace(/^.*\{text\}.*$/m, noTextHouse(it));
     t = t.replace('{subject}', subj).replace('{style_string}', style + (it.mods.length ? ', ' + it.mods.join(', ') : '') + (it.detail ? ', ' + it.detail : ''))
       .replace('{palette}', colors(it)).replace('{background}', it.background || 'starfield').replace(/3:4 portrait/g, (it.aspect || '3:4') + ' portrait');
     if (it.lang && it.lang !== 'English') t += `\nAll lettering in ${it.lang}.`;
     return t.replace(/\{[a-z_]+\}/g, '').trim();
   }
   function houseGrok(it) {
-    const text = it.phrase ? `bold "${it.phrase}" text in ${it.font}, spelled exactly` : 'no text, no letters';
+    const text = it.phrase ? `bold "${it.phrase}" text in ${it.font}, spelled exactly` : noTextGrok(it);
     return `Flat 2D print-ready t-shirt graphic, ${subjectOf(it)}, ${it.stylePrompt || it.style}, ${it.mods.join(', ')}${it.detail ? ', ' + it.detail : ''}, ${colors(it)}, ${text}, centered inside a thick continuous rounded orange (#FF6A00) border panel with a dark cool ${it.background || 'starfield'} interior, flat pure white background outside the border, ${it.aspect || '3:4'} portrait, clean bold outlines, solid fills, crisp edges, no glow, no blur, no mockup, no shirt, no real brands, logos, characters or celebrities${it.lang && it.lang !== 'English' ? ', lettering in ' + it.lang : ''}`;
   }
   function renderVariants(it, rng) {
@@ -281,11 +282,31 @@
   }
   function langClause(it) { return it.lang && it.lang !== 'English' ? ` All lettering must be written in ${it.lang} (translate the slogan naturally).` : ''; }
   function colors(it) { return it.paletteColors && it.paletteColors.length ? `${it.palette} palette (${it.paletteColors.join(', ')})` : `${it.palette} palette`; }
+  function charNameList(it) {
+    const n = (it && it.charNames) || [];
+    return Array.isArray(n) ? n.filter(Boolean) : [];
+  }
+  /** No-slogan clause; when house characters are on, allow their necklace/collar name lettering. */
+  function noTextGemini(it) {
+    const names = charNameList(it);
+    if (names.length) return `No slogans or other text, except the character name lettering on their necklaces and collars (${names.join(', ')}).`;
+    return 'No text, letters, numbers or words anywhere in the design.';
+  }
+  function noTextGrok(it) {
+    const names = charNameList(it);
+    if (names.length) return `no slogans or other text except the character name lettering on their necklaces and collars (${names.join(', ')})`;
+    return 'no text, no letters';
+  }
+  function noTextHouse(it) {
+    const names = charNameList(it);
+    if (names.length) return `Text: none. No slogans or other text, except the character name lettering on their necklaces and collars (${names.join(', ')}).`;
+    return 'Text: none. No letters, numbers or words anywhere.';
+  }
   function geminiPrompt(it, tpl) {
     const subj = subjectOf(it);
     const style = it.style + (it.stylePrompt ? ' (' + it.stylePrompt + ')' : '');
     const mods = it.mods.join(', ') + (it.detail ? ', ' + it.detail : '');
-    const text = it.phrase ? `Include the text "${it.phrase}" in ${it.font} lettering, large, highly legible and spelled exactly as written.` : 'No text, letters, numbers or words anywhere in the design.';
+    const text = it.phrase ? `Include the text "${it.phrase}" in ${it.font} lettering, large, highly legible and spelled exactly as written.` : noTextGemini(it);
     const avoid = it.avoid ? ' Avoid: ' + AVOID.join(', ') + '.' : '';
     const intro = ['Create a design-only t-shirt graphic (a standalone isolated artwork for printing, NOT a mockup).',
       'Generate an original print-ready t-shirt design: just the artwork itself, isolated, with no shirt or mockup.',
@@ -294,7 +315,7 @@
   }
   function grokPrompt(it, tpl) {
     const subj = subjectOf(it);
-    const text = it.phrase ? `bold "${it.phrase}" text in ${it.font}, correctly spelled` : 'no text, no letters';
+    const text = it.phrase ? `bold "${it.phrase}" text in ${it.font}, correctly spelled` : noTextGrok(it);
     const avoid = it.avoid ? ', no ' + AVOID.slice(0, 6).join(', no ') : '';
     const lead = ['t-shirt graphic design', 'isolated tee print artwork', 'standalone t-shirt design'][tpl % 3];
     return `${lead}, ${subj}, ${it.style}, ${it.mods.join(', ')}${it.detail ? ', ' + it.detail : ''}, ${it.composition}, ${colors(it)}, ${text}, design only, isolated on plain background, crisp vector-like edges, high contrast for black fabric, aspect ratio ${it.aspect}${avoid}${it.lang && it.lang !== 'English' ? ', lettering in ' + it.lang : ''}`;
@@ -420,5 +441,27 @@
     const re = /\n*Character details,\s*\nHD ultra-realistic photorealistic,\s*\nHd 8k ultra realistic\n(?:\d+\.\s.*(?:\n|$))*/i;
     return t.replace(re, '\n').replace(/\n{3,}/g, '\n\n').trim();
   }
-  window.BZ = { setHouseTemplate, normEvidence, SPEC_BLOCK, AVOID, BRANDS, LANGS, MASCOTS, CHAR_HEADER, CHAR_DEFAULTS_VERSION, DEFAULT_CHARACTERS, cloneDefaultCharacters, normalizeCharacters, loadCharacters, matchesPrevDefaultsV1, buildCharacterBlock, stripCharacterSection, trademarkHits, makeRng, randomSeed, normalize, generate, refineOffline, brief, renderVariants, makeTitle, slug };
+  
+  /** Rewrite no-text clauses in an already-built prompt body for current character names (or restore classic when off). */
+  function rewriteNoTextClauses(body, charNames) {
+    let s = String(body || '');
+    const names = Array.isArray(charNames) ? charNames.filter(Boolean) : [];
+    const geminiChar = /No slogans or other text, except the character name lettering on their necklaces and collars \([^)]*\)\./g;
+    const geminiOld = /No text, letters, numbers or words anywhere in the design\./g;
+    const grokChar = /\bno slogans or other text except the character name lettering on their necklaces and collars \([^)]*\)/g;
+    const grokOld = /\bno text, no letters\b/g;
+    const houseChar = /Text: none\. No slogans or other text, except the character name lettering on their necklaces and collars \([^)]*\)\./g;
+    const houseOld = /Text: none\. No letters, numbers or words anywhere\./g;
+    if (names.length) {
+      const g = `No slogans or other text, except the character name lettering on their necklaces and collars (${names.join(', ')}).`;
+      const k = `no slogans or other text except the character name lettering on their necklaces and collars (${names.join(', ')})`;
+      const h = `Text: none. No slogans or other text, except the character name lettering on their necklaces and collars (${names.join(', ')}).`;
+      return s.replace(geminiChar, g).replace(geminiOld, g).replace(grokChar, k).replace(grokOld, k).replace(houseChar, h).replace(houseOld, h);
+    }
+    return s.replace(geminiChar, 'No text, letters, numbers or words anywhere in the design.')
+      .replace(grokChar, 'no text, no letters')
+      .replace(houseChar, 'Text: none. No letters, numbers or words anywhere.');
+  }
+
+window.BZ = { setHouseTemplate, normEvidence, SPEC_BLOCK, AVOID, BRANDS, LANGS, MASCOTS, CHAR_HEADER, CHAR_DEFAULTS_VERSION, DEFAULT_CHARACTERS, cloneDefaultCharacters, normalizeCharacters, loadCharacters, matchesPrevDefaultsV1, buildCharacterBlock, stripCharacterSection, rewriteNoTextClauses, noTextGemini, noTextGrok, trademarkHits, makeRng, randomSeed, normalize, generate, refineOffline, brief, renderVariants, makeTitle, slug };
 })();
