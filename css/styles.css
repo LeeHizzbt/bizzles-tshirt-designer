@@ -33,7 +33,9 @@ code, pre, kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, mon
 
 .site-header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 14px 14px 6px; }
 .brand { display: flex; gap: 10px; align-items: center; }
-.mascot { flex: none; width: 96px; height: auto; }
+.mascot { flex: none; display: flex; gap: 8px; align-items: center; }
+.mascot img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent); background: #000; }
+@media (max-width: 420px) { .mascot img { width: 56px; height: 56px; } }
 h1 { font-size: clamp(1.25rem, 4.5vw, 2rem); margin: 0; line-height: 1.15; letter-spacing: -.01em; }
 .tagline { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
 .theme-quick select { min-width: 170px; }
