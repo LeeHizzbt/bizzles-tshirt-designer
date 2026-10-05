@@ -40,6 +40,24 @@
   <button role="tab" id="tab-help" aria-controls="view-help" aria-selected="false" data-view="help">🛠️ Print Tips &amp; Help</button>
 </nav>
 
+<div class="char-bar" id="charBar" aria-live="polite">
+  <div class="char-bar-inner">
+    <button type="button" class="char-bar-toggle" id="charBarToggle" aria-pressed="false" title="Toggle: add characters to every prompt">
+      <span class="char-bar-dot" aria-hidden="true"></span>
+      <span class="char-bar-label">Characters <strong id="charBarState">OFF</strong></span>
+    </button>
+    <button type="button" class="char-bar-menu" id="charBarMenu" aria-expanded="false" aria-controls="charBarPopover" title="Pick characters" aria-label="Open character picker">▾</button>
+  </div>
+  <div class="char-bar-popover" id="charBarPopover" hidden role="dialog" aria-label="Character picker">
+    <div class="char-bar-pop-head">
+      <label class="toggle small"><input type="checkbox" id="charBarMaster" data-char-master> Add to every prompt</label>
+      <button type="button" class="btn tiny" id="charBarClose" aria-label="Close character picker">✕</button>
+    </div>
+    <div class="char-bar-list" id="charBarList"></div>
+    <button type="button" class="btn tiny" id="charBarEdit">✏️ Edit characters</button>
+  </div>
+</div>
+
 <main id="main">
   <div id="dataBanner" class="banner" role="status"></div>
 
@@ -65,6 +83,20 @@
           <legend>Subthemes <small class="muted">(from selected categories)</small></legend>
           <div class="chips" id="subChips"></div>
         </fieldset>
+
+        <div class="panel-sub characters-panel" id="charactersPanel">
+          <div class="char-panel-head">
+            <h3>👽 Characters</h3>
+            <label class="toggle"><input type="checkbox" id="charMasterGen" data-char-master> Add characters to every prompt</label>
+          </div>
+          <p class="hint small">When on, a Character details block is appended to every prompt (before the print spec). Edit the cast below.</p>
+          <div class="char-cards" id="charCardsGen"></div>
+          <div class="actions char-edit-actions">
+            <button type="button" class="btn tiny" data-char-act="add">＋ Add character</button>
+            <button type="button" class="btn tiny" data-char-act="reset">↺ Reset to defaults</button>
+          </div>
+        </div>
+
         <label class="field">Keywords <small class="muted">(comma separated, optional)</small>
           <input type="text" id="keywords" data-bind="keywords" placeholder="e.g. tacos, skateboard, full moon" autocomplete="off">
         </label>
@@ -233,19 +265,26 @@
             <select data-bind="text" id="set-text">
               <option value="mix">Mix</option><option value="text">With text</option><option value="none">No text</option>
             </select></label>
-          <label class="field">Bizzle &amp; Jinxy mascots
-            <select data-bind="mascots" id="set-mascots">
-              <option value="some">Sometimes</option><option value="always">Always</option><option value="off">Never</option>
-            </select></label>
-        </div>
-        <div class="row">
           <label class="field">Prompt language
             <select data-bind="lang" id="set-lang"></select></label>
-          <label class="field">Default export format
-            <select data-bind="exportFmt" id="set-export">
-              <option value="md">Markdown (.md)</option><option value="csv">CSV (.csv)</option><option value="txt">Text (.txt)</option>
-            </select></label>
         </div>
+
+        <div class="panel-sub characters-panel" id="charactersPanelSettings">
+          <div class="char-panel-head">
+            <h3>👽 Characters</h3>
+            <label class="toggle"><input type="checkbox" id="charMasterSet" data-char-master> Add characters to every prompt</label>
+          </div>
+          <p class="hint small">Same cast as on the Generate tab. Replaces the old Bizzle &amp; Jinxy mascots dropdown — when enabled, full character details are appended to every prompt.</p>
+          <div class="char-cards" id="charCardsSet"></div>
+          <div class="actions char-edit-actions">
+            <button type="button" class="btn tiny" data-char-act="add">＋ Add character</button>
+            <button type="button" class="btn tiny" data-char-act="reset">↺ Reset to defaults</button>
+          </div>
+        </div>
+        <label class="field">Default export format
+          <select data-bind="exportFmt" id="set-export">
+            <option value="md">Markdown (.md)</option><option value="csv">CSV (.csv)</option><option value="txt">Text (.txt)</option>
+          </select></label>
         <label class="field">Prompt format
           <select data-bind="format" id="set-format">
             <option value="varied">Varied templates, tuned per generator (default)</option>

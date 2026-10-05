@@ -352,5 +352,73 @@
       fourthwallTags: tags.slice(0, 5) };
   }
 
-  window.BZ = { setHouseTemplate, normEvidence, SPEC_BLOCK, AVOID, BRANDS, LANGS, MASCOTS, trademarkHits, makeRng, randomSeed, normalize, generate, refineOffline, brief, renderVariants, makeTitle, slug };
+
+  // ---------- Characters (photorealistic cast; appended by code before the spec block) ----------
+  const CHAR_HEADER = [
+    'Character details,',
+    'HD ultra-realistic photorealistic,',
+    'Hd 8k ultra realistic'
+  ].join('\n');
+  const CHAR_DEFAULTS_VERSION = 2;
+  const DEFAULT_CHARACTERS = [
+    { id: 'bizzle', name: 'Bizzle', text: 'Bizzle - Green annunaki Male alien. Wearing a awesome hiphop white gold diamond necklace that says,  \"Bizzle \". Cat dad tshirt, baggy custom hiphop jeans, custom neon green weed sneakers,\nAdd clothes that are funny and related to each prompt.', avatar: 'img/bizzle.jpg', emoji: '👽' },
+    { id: 'jinxy', name: 'Jinxy', text: 'Jinxy - fluffy orange and white boy cat with bright blue eyes. Wearing a huge white gold diamond hiphop necklace that says, \"Jinxy\".', avatar: 'img/jinxy.jpg', emoji: '🐱' },
+    { id: 'blaze', name: 'Blaze', text: 'Blaze - a cute white and brown pittbull. With a spike collar that says \"Blaze\" to look mean. With boy puppy voice.', avatar: '', emoji: '🐶' },
+    { id: 'bean', name: 'Bean', text: 'Bean - a grey diluted calico girl cat with a cat collar that says \"Bean\" girl cat voice.', avatar: '', emoji: '🐱' }
+  ];
+  const PREV_DEFAULT_CHARACTERS_V1 = [
+    { id: 'bizzle', name: 'Bizzle', text: 'Bizzle - Green annunaki Male alien. Wearing a awesome hiphop white gold diamond necklace that says,  \"Bizzle \". Kawasaki tshirt, green alien head Jnco jeans, custom neon green led hiphop sneakers,' },
+    { id: 'jinxy', name: 'Jinxy', text: 'Jinxy - fluffy orange and white boy cat with bright blue eyes. Wearing a huge white gold diamond hiphop necklace that says, \"Jinxy\".' },
+    { id: 'blaze', name: 'Blaze', text: 'Blaze - a cute white and brown pittbull. With a spike collar that says \"Blaze\" to look mean. With boy puppy voice.' },
+    { id: 'bean', name: 'Bean', text: 'Bean - a grey diluted calico girl cat with a cat collar that says \"Bean\" cat voice.' }
+  ];
+
+  function cloneDefaultCharacters() {
+    return DEFAULT_CHARACTERS.map(c => ({ id: c.id, name: c.name, text: c.text, avatar: c.avatar || '', emoji: c.emoji || '✨' }));
+  }
+  function charFingerprint(list) {
+    return (list || []).map(c => String(c.id) + '\0' + String(c.name) + '\0' + String(c.text)).join('\n');
+  }
+  function matchesPrevDefaultsV1(list) {
+    if (!Array.isArray(list) || list.length !== PREV_DEFAULT_CHARACTERS_V1.length) return false;
+    return charFingerprint(list.map(c => ({ id: c.id, name: c.name, text: c.text }))) === charFingerprint(PREV_DEFAULT_CHARACTERS_V1);
+  }
+  function loadCharacters(stored) {
+    let version = 0, list = null;
+    if (Array.isArray(stored)) { version = 1; list = stored; }
+    else if (stored && typeof stored === 'object') { version = stored.version | 0; list = stored.characters; }
+    if (!Array.isArray(list) || !list.length) return { version: CHAR_DEFAULTS_VERSION, characters: cloneDefaultCharacters(), migrated: true };
+    if (version < CHAR_DEFAULTS_VERSION && matchesPrevDefaultsV1(list)) {
+      return { version: CHAR_DEFAULTS_VERSION, characters: cloneDefaultCharacters(), migrated: true };
+    }
+    return { version: Math.max(version, CHAR_DEFAULTS_VERSION), characters: normalizeCharacters(list), migrated: version < CHAR_DEFAULTS_VERSION };
+  }
+  function normalizeCharacters(list) {
+    if (!Array.isArray(list) || !list.length) return cloneDefaultCharacters();
+    return list.map((c, i) => {
+      const o = c && typeof c === 'object' ? c : {};
+      const id = String(o.id || ('char' + i)).slice(0, 40);
+      const name = String(o.name || ('Character ' + (i + 1))).slice(0, 60);
+      const text = String(o.text != null ? o.text : (name + ' -')).slice(0, 800);
+      const def = DEFAULT_CHARACTERS.find(d => d.id === id);
+      return { id, name, text, avatar: o.avatar != null ? String(o.avatar) : (def ? def.avatar : ''), emoji: o.emoji || (def && def.emoji) || '✨' };
+    });
+  }
+  /** Build the Character details section for the currently checked characters (renumbered 1..n). */
+  function buildCharacterBlock(characters, checkedIds) {
+    const all = normalizeCharacters(characters);
+    const want = Array.isArray(checkedIds) ? checkedIds : all.map(c => c.id);
+    const picked = all.filter(c => want.includes(c.id));
+    if (!picked.length) return '';
+    const lines = picked.map((c, i) => (i + 1) + '. ' + c.text);
+    return CHAR_HEADER + '\n' + lines.join('\n');
+  }
+  /** Strip a Character details section the AI (or a prior pass) may have embedded. */
+  function stripCharacterSection(t) {
+    t = String(t || '');
+    // Match from "Character details," through lines before a blank-line+bullet spec or end
+    const re = /\n*Character details,\s*\nHD ultra-realistic photorealistic,\s*\nHd 8k ultra realistic\n(?:\d+\.\s.*(?:\n|$))*/i;
+    return t.replace(re, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+  window.BZ = { setHouseTemplate, normEvidence, SPEC_BLOCK, AVOID, BRANDS, LANGS, MASCOTS, CHAR_HEADER, CHAR_DEFAULTS_VERSION, DEFAULT_CHARACTERS, cloneDefaultCharacters, normalizeCharacters, loadCharacters, matchesPrevDefaultsV1, buildCharacterBlock, stripCharacterSection, trademarkHits, makeRng, randomSeed, normalize, generate, refineOffline, brief, renderVariants, makeTitle, slug };
 })();

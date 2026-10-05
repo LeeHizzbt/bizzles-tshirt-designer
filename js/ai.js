@@ -109,9 +109,12 @@
     throw new AIError('The AI replied in an unexpected format. Please try again.', 'parse');
   }
 
-  // Remove any spec-like lines the AI may have added; app.js appends the exact block itself.
+  // Remove any spec-like lines / character-detail blocks the AI may have added; app.js appends them itself.
   function stripSpec(t) {
-    return String(t || '').split('\n').filter(l => !/^\s*[•\-*]\s*(File format|Resolution|Print size|Color mode|Max file size|No blurry|No JPG)/i.test(l) && !/awesome background with cool orange boarder/i.test(l)).join('\n').trim();
+    let s = String(t || '');
+    // Drop character-details section if the model echoed it
+    s = s.replace(/\n*Character details,\s*\nHD ultra-realistic photorealistic,\s*\nHd 8k ultra realistic\n(?:\d+\.\s.*(?:\n|$))*/ig, '\n');
+    return s.split('\n').filter(l => !/^\s*[•\-*]\s*(File format|Resolution|Print size|Color mode|Max file size|No blurry|No JPG)/i.test(l) && !/awesome background with cool orange boarder/i.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
   window.BZAI = { PROVIDERS, AIError, call, parseJSON, stripSpec };

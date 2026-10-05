@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const BZ = window.BZ, AI = window.BZAI;
-  const VERSION = 'v1.1.2';
+  const VERSION = 'v1.3.0';
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -11,7 +11,7 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { toast('Storage is full or blocked; could not save.'); return false; } },
     del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
   };
-  const K = { settings: 'bizzle.settings.v1', current: 'bizzle.current.v1', packs: 'bizzle.packs.v1', key: p => 'bizzle.key.' + p };
+  const K = { settings: 'bizzle.settings.v1', current: 'bizzle.current.v1', packs: 'bizzle.packs.v1', characters: 'bizzle.characters.v1', key: p => 'bizzle.key.' + p };
 
   const THEMES = [
     { id: 'orange-black', name: 'Orange Border on Black', bg: '#000', fg: '#fff', bd: '#ff7a00' },
@@ -27,15 +27,30 @@
 
   const DEFAULTS = {
     count: 50, categories: null, holiday: '', subthemes: [], keywords: '', preset: '', style: 'mix', target: 'both', aspect: '3:4',
-    palette: 'mix', text: 'mix', mascots: 'some', avoid: true, source: 'all', adult: false, lang: 'English', spec: true,
-    provider: 'gemini', models: {}, exportFmt: 'md', theme: 'orange-black', seed: '', format: 'varied'
+    palette: 'mix', text: 'mix', mascots: 'off', avoid: true, source: 'all', adult: false, lang: 'English', spec: true,
+    provider: 'gemini', models: {}, exportFmt: 'md', theme: 'orange-black', seed: '', format: 'varied',
+    charactersOn: false, characterIds: null
   };
-  const SHARE_KEYS = ['format', 'count', 'categories', 'holiday', 'subthemes', 'keywords', 'preset', 'style', 'target', 'aspect', 'palette', 'text', 'mascots', 'avoid', 'lang', 'spec', 'theme', 'seed', 'source'];
+  const SHARE_KEYS = ['format', 'count', 'categories', 'holiday', 'subthemes', 'keywords', 'preset', 'style', 'target', 'aspect', 'palette', 'text', 'avoid', 'lang', 'spec', 'theme', 'seed', 'source', 'charactersOn', 'characterIds'];
 
-  const state = { settings: Object.assign({}, DEFAULTS, LS.get(K.settings, {})), data: null, items: LS.get(K.current, []) || [], packs: LS.get(K.packs, []) || [], image: null, busy: false };
+  const _charLoad = BZ.loadCharacters(LS.get(K.characters, null));
+  const state = { settings: Object.assign({}, DEFAULTS, LS.get(K.settings, {})), data: null, items: LS.get(K.current, []) || [], packs: LS.get(K.packs, []) || [], characters: _charLoad.characters, charVersion: _charLoad.version, image: null, busy: false, charPopover: false };
   if (!state.settings.seed) state.settings.seed = BZ.randomSeed();
   if (!Array.isArray(state.items)) state.items = [];
   if (!Array.isArray(state.packs)) state.packs = [];
+  // Mascots dropdown superseded by Characters — never inject cartoon mascots into subjects.
+  state.settings.mascots = 'off';
+  if (!Array.isArray(state.settings.characterIds)) {
+    state.settings.characterIds = state.characters.map(c => c.id);
+  } else {
+    const valid = new Set(state.characters.map(c => c.id));
+    state.settings.characterIds = state.settings.characterIds.filter(id => valid.has(id));
+    // If migration replaced the cast and left no valid ids, default to all
+    if (!state.settings.characterIds.length) state.settings.characterIds = state.characters.map(c => c.id);
+  }
+  if (typeof state.settings.charactersOn !== 'boolean') state.settings.charactersOn = false;
+  // Persist migrated defaults so the new text sticks for unedited users
+  if (_charLoad.migrated) LS.set(K.characters, { version: state.charVersion, characters: state.characters });
   window.__bizzle = state; // handy for debugging/tests
 
   // ---------------- Toast ----------------
@@ -165,9 +180,101 @@
     applyTheme();
   }
 
-  // ---------------- Spec ----------------
+  // ---------------- Spec + Characters ----------------
   function renderSpec() { $('#specPre').textContent = BZ.SPEC_BLOCK; }
-  function fullText(item, v) { const body = (item.variants[v] || '').trim(); return state.settings.spec ? body + '\n\n' + BZ.SPEC_BLOCK : body; }
+  function checkedCharacterIds() {
+    const valid = new Set(state.characters.map(c => c.id));
+    const ids = Array.isArray(state.settings.characterIds) ? state.settings.characterIds.filter(id => valid.has(id)) : state.characters.map(c => c.id);
+    return ids;
+  }
+  function characterBlock() {
+    if (!state.settings.charactersOn) return '';
+    return BZ.buildCharacterBlock(state.characters, checkedCharacterIds());
+  }
+  /** Assemble final prompt: body → Character details (if on) → spec block (last). De-dupe AI echoes. */
+  function fullText(item, v) {
+    let body = BZ.stripCharacterSection(AI.stripSpec((item.variants[v] || '').trim()));
+    const parts = [];
+    if (body) parts.push(body);
+    const chars = characterBlock();
+    if (chars) parts.push(chars);
+    if (state.settings.spec) parts.push(BZ.SPEC_BLOCK);
+    return parts.join('\n\n');
+  }
+  function saveCharacters() { LS.set(K.characters, { version: state.charVersion || BZ.CHAR_DEFAULTS_VERSION, characters: state.characters }); }
+  function setCharactersOn(on, opts) {
+    state.settings.charactersOn = !!on;
+    saveSettings();
+    syncCharUI();
+    if (!(opts && opts.skipRender)) renderResults();
+  }
+  function setCharacterChecked(id, checked) {
+    const set = new Set(checkedCharacterIds());
+    if (checked) set.add(id); else set.delete(id);
+    // Keep cast order
+    state.settings.characterIds = state.characters.map(c => c.id).filter(cid => set.has(cid));
+    saveSettings();
+    syncCharUI();
+    renderResults();
+  }
+  function charCardHTML(c, checked) {
+    const av = c.avatar
+      ? `<img class="char-avatar" src="${esc(c.avatar)}" alt="" width="40" height="40">`
+      : `<span class="char-avatar emoji" aria-hidden="true">${esc(c.emoji || '✨')}</span>`;
+    return `<article class="char-card" data-char-id="${esc(c.id)}">
+      <label class="char-check"><input type="checkbox" data-char-check="${esc(c.id)}" ${checked ? 'checked' : ''} aria-label="Include ${esc(c.name)}"><span class="sr-only">Include ${esc(c.name)}</span></label>
+      ${av}
+      <div class="char-body">
+        <div class="char-name">${esc(c.name)}</div>
+        <details class="char-details"><summary>Details</summary><pre class="char-text">${esc(c.text)}</pre></details>
+        <pre class="char-text char-text-desktop">${esc(c.text)}</pre>
+        <div class="char-edit-row" hidden>
+          <label class="field">Name <input type="text" data-char-name maxlength="60" value="${esc(c.name)}"></label>
+          <label class="field">Details <textarea data-char-text rows="3" maxlength="800">${esc(c.text)}</textarea></label>
+          <div class="actions">
+            <button type="button" class="btn tiny primary" data-char-act="save" data-char-id="${esc(c.id)}">Save</button>
+            <button type="button" class="btn tiny" data-char-act="cancel" data-char-id="${esc(c.id)}">Cancel</button>
+          </div>
+        </div>
+        <div class="actions char-card-acts">
+          <button type="button" class="btn tiny" data-char-act="edit" data-char-id="${esc(c.id)}">✏️ Edit</button>
+          <button type="button" class="btn tiny danger" data-char-act="delete" data-char-id="${esc(c.id)}">🗑 Delete</button>
+        </div>
+      </div>
+    </article>`;
+  }
+  function renderCharCards() {
+    const checked = new Set(checkedCharacterIds());
+    const html = state.characters.map(c => charCardHTML(c, checked.has(c.id))).join('') || '<p class="hint">No characters yet. Add one or reset to defaults.</p>';
+    const gen = $('#charCardsGen'); if (gen) gen.innerHTML = html;
+    const set = $('#charCardsSet'); if (set) set.innerHTML = html;
+    // Compact bar list
+    const bar = $('#charBarList');
+    if (bar) {
+      bar.innerHTML = state.characters.map(c => {
+        const av = c.avatar ? `<img src="${esc(c.avatar)}" alt="" width="22" height="22">` : `<span class="emoji">${esc(c.emoji || '✨')}</span>`;
+        return `<label class="char-bar-item"><input type="checkbox" data-char-check="${esc(c.id)}" ${checked.has(c.id) ? 'checked' : ''}>${av}<span>${esc(c.name)}</span></label>`;
+      }).join('') || '<p class="hint small">No characters</p>';
+    }
+  }
+  function syncCharUI() {
+    const on = !!state.settings.charactersOn;
+    $$('[data-char-master]').forEach(el => { el.checked = on; });
+    const btn = $('#charBarToggle');
+    if (btn) {
+      btn.setAttribute('aria-pressed', String(on));
+      btn.classList.toggle('on', on);
+      $('#charBarState').textContent = on ? 'ON' : 'OFF';
+    }
+    renderCharCards();
+  }
+  function openCharPopover(open) {
+    state.charPopover = !!open;
+    const pop = $('#charBarPopover'); const btn = $('#charBarMenu');
+    if (!pop) return;
+    pop.hidden = !state.charPopover;
+    if (btn) btn.setAttribute('aria-expanded', String(state.charPopover));
+  }
   const VLABEL = { gemini: 'Gemini', grok: 'Grok Imagine' };
 
   // ---------------- Generate ----------------
@@ -179,7 +286,7 @@
     return Object.assign({
       count: s.count, seed: s.seed, categories: cats, holiday: hol, subthemes: s.subthemes || [],
       keywords: (s.keywords || '').split(',').map(x => x.trim()).filter(Boolean), preset: state.data.themes.filter(passesSourceSoft).find(t => t.id === s.preset) || null,
-      styles: state.data.styles.filter(passesSourceSoft), style: s.style, palettes: state.data.palettes.filter(passesSourceSoft), palette: s.palette, text: s.text, mascots: s.mascots,
+      styles: state.data.styles.filter(passesSourceSoft), style: s.style, palettes: state.data.palettes.filter(passesSourceSoft), palette: s.palette, text: s.text, mascots: 'off',
       target: s.target, aspect: s.aspect, lang: s.lang, avoid: !!s.avoid, format: s.format
     }, extra || {});
   }
@@ -247,7 +354,7 @@
       setAiStatus(`AI refining #${it.n}…`);
       try {
         const vs = Object.keys(it.variants).filter(v => it.variants[v]);
-        const prompt = `Rewrite this design-only t-shirt image prompt to ${REFINE_TEXT[kind]}. Keep it an isolated graphic for a t-shirt (not a mockup), original (no trademarks, characters, or celebrity likeness), aspect ratio ${it.aspect}. Do NOT include any file/print specs.\n\n` +
+        const prompt = `Rewrite this design-only t-shirt image prompt to ${REFINE_TEXT[kind]}. Keep it an isolated graphic for a t-shirt (not a mockup), original (no trademarks, copyrighted characters, or celebrity likeness), aspect ratio ${it.aspect}. Do NOT include any file/print specs or a Character details section.${state.settings.charactersOn ? ' Keep the house characters present in the design.' : ''}\n\n` +
           vs.map(v => `${VLABEL[v]} prompt:\n${it.variants[v]}`).join('\n\n') +
           `\n\nReturn JSON: {"title": "short title", ${vs.map(v => `"prompt_${v}": "..."`).join(', ')}}`;
         const out = AI.parseJSON(await AI.call(aiArgs({ prompt, system: SYSTEM, json: true })));
@@ -318,7 +425,11 @@
       <div class="brief-sec"><h3>13 Etsy-style tags (≤20 chars each)</h3><div class="chips static">${b.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div></div>
       <div class="brief-sec"><h3>Details</h3><p class="small">Category: ${esc(it.catName || '-')} · Style: ${esc(it.style || '-')} · Palette: ${esc(it.palette || '-')} · Holiday: ${esc(it.holiday || '-')} · Aspect: ${esc(it.aspect)}</p></div>
       <div class="brief-sec"><h3>Avoid</h3><p class="small">${esc(BZ.AVOID.join('; '))}</p></div>`;
-    briefText = `TITLE: ${b.title}\nPRODUCT TITLE: ${b.productTitle}\nDESCRIPTION: ${b.description}\nTAGS (${b.tags.length}): ${b.tags.join(', ')}`;
+    const charSec = characterBlock();
+    if (charSec) {
+      $('#briefBody').insertAdjacentHTML('beforeend', `<div class="brief-sec"><h3>Character details</h3><pre class="spec">${esc(charSec)}</pre></div>`);
+    }
+    briefText = `TITLE: ${b.title}\nPRODUCT TITLE: ${b.productTitle}\nDESCRIPTION: ${b.description}\nTAGS (${b.tags.length}): ${b.tags.join(', ')}` + (charSec ? '\n\n' + charSec : '');
     $('#briefDialog').showModal();
   }
 
@@ -345,7 +456,17 @@
     const li = b.closest('li'); const p = state.packs.find(x => x.id === li.dataset.pack); if (!p) return;
     const act = b.dataset.pact;
     if (act === 'load') {
-      state.items = JSON.parse(JSON.stringify(p.items)); renumber(); saveCurrent(); renderResults(); showView('generate'); toast(`Loaded "${p.name}"`);
+      state.items = JSON.parse(JSON.stringify(p.items)); renumber(); saveCurrent();
+      // Restore character toggle / selection saved with the pack so prompts still include the section.
+      if (p.settings && typeof p.settings === 'object') {
+        if (typeof p.settings.charactersOn === 'boolean') state.settings.charactersOn = p.settings.charactersOn;
+        if (Array.isArray(p.settings.characterIds)) {
+          const valid = new Set(state.characters.map(c => c.id));
+          state.settings.characterIds = p.settings.characterIds.filter(id => valid.has(id));
+        }
+        saveSettings(); syncCharUI();
+      }
+      renderResults(); showView('generate'); toast(`Loaded "${p.name}"`);
     }
     if (act === 'rename') {
       const row = li.querySelector('div');
@@ -392,6 +513,11 @@
       const o = JSON.parse(b64urlDecode(m[1]));
       SHARE_KEYS.forEach(k => { if (o[k] !== undefined) state.settings[k] = o[k]; });
       state.settings.count = Math.max(1, Math.min(100, parseInt(state.settings.count, 10) || 50));
+      state.settings.charactersOn = !!state.settings.charactersOn;
+      if (Array.isArray(state.settings.characterIds)) {
+        const valid = new Set(state.characters.map(c => c.id));
+        state.settings.characterIds = state.settings.characterIds.filter(id => valid.has(id));
+      }
       return true;
     } catch (e) { console.warn('Bad share hash', e); return false; }
   }
@@ -528,7 +654,9 @@
       selected_subthemes: o.subthemes, keywords: o.keywords, theme_preset: o.preset ? { name: o.preset.name, description: o.preset.description, motifs: o.preset.motifs } : null,
       style: s.style === 'mix' ? 'vary across trendy styles' : s.style, palette: s.palette === 'mix' ? 'vary; bright, high contrast for black shirts' : (state.data.palettes.find(p => p.id === s.palette) || {}).name,
       text_on_design: { mix: 'about half with a short original slogan, half graphic-only', text: 'every design includes a short original slogan, spelled exactly', none: 'no text at all' }[s.text],
-      mascots: s.mascots === 'off' ? 'do not include mascots' : `${s.mascots === 'always' ? 'always' : 'sometimes'} feature ${BZ.MASCOTS.bizzle} and/or ${BZ.MASCOTS.jinxy}`,
+      characters_enabled: !!s.charactersOn,
+      characters: s.charactersOn ? state.characters.filter(c => checkedCharacterIds().includes(c.id)).map(c => ({ name: c.name, details: c.text })) : [],
+      character_instruction: s.charactersOn ? 'Every design MUST include the checked characters appearing in the artwork. The app will append a Character details block for you — do NOT write Character details or print-spec lines yourself.' : 'Do not force specific named characters unless the trend context calls for original mascot-like figures.',
       aspect_ratio: s.aspect, language: s.lang, avoid: s.avoid ? BZ.AVOID : []
     };
   }
@@ -549,7 +677,8 @@
             chunk.map((it, i) => `${i + 1}. ${it.title}\n${Object.keys(it.variants).filter(v => it.variants[v]).map(v => VLABEL[v] + ': ' + it.variants[v]).join('\n')}`).join('\n\n') +
             `\n\nReturn JSON: {"prompts":[{"title":"...", ${variantSpec(s.target)}, "category":"...", "style":"...", "text":"slogan or empty"}]} with exactly ${n} items.`;
         } else {
-          prompt = `Write ${n} varied, non-duplicate, design-only t-shirt image prompts based on this trend context (JSON):\n${JSON.stringify(contextForAI())}\n\nRules: each prompt describes ONE isolated graphic for a t-shirt (not a mockup, no shirt, no model), bold and high-contrast so it prints well on a black tee, ${s.aspect} aspect ratio, original (no trademarks/characters/celebrities). Vary subject, style, composition and palette. Write prompts in ${s.lang}.${out.length ? ' Avoid repeating these titles: ' + out.map(x => x.title).join('; ') : ''}\n\nReturn JSON: {"prompts":[{"title":"...", ${variantSpec(s.target)}, "category":"...", "style":"...", "text":"slogan or empty"}]} with exactly ${n} items.`;
+          const charRule = s.charactersOn ? ' The checked house characters MUST appear in each design (use their names). Do NOT paste a "Character details" section or any print-spec lines — the app appends those.' : '';
+          prompt = `Write ${n} varied, non-duplicate, design-only t-shirt image prompts based on this trend context (JSON):\n${JSON.stringify(contextForAI())}\n\nRules: each prompt describes ONE isolated graphic for a t-shirt (not a mockup, no shirt, no model), bold and high-contrast so it prints well on a black tee, ${s.aspect} aspect ratio, original (no trademarks/copyrighted characters/celebrities). Vary subject, style, composition and palette. Write prompts in ${s.lang}.${charRule}${out.length ? ' Avoid repeating these titles: ' + out.map(x => x.title).join('; ') : ''}\n\nReturn JSON: {"prompts":[{"title":"...", ${variantSpec(s.target)}, "category":"...", "style":"...", "text":"slogan or empty"}]} with exactly ${n} items.`;
         }
         const j = AI.parseJSON(await AI.call(aiArgs({ system: SYSTEM, prompt, json: true })));
         const arr = Array.isArray(j) ? j : (j.prompts || j.designs || []);
@@ -587,7 +716,7 @@
     const s = state.settings; const n = Math.max(1, Math.min(20, parseInt($('#imgCount').value, 10) || 6));
     state.busy = true; setAiStatus(`Analyzing image with ${AI.PROVIDERS[s.provider].label}…`);
     try {
-      const prompt = `Analyze this image (it may be a screenshot of trending shirts, a meme, a photo, or a sketch). 1) Briefly describe what's in it, the visual style, colors, and why it might appeal to t-shirt buyers. 2) Suggest ${n} ORIGINAL design-only t-shirt image prompts inspired by it (do not copy logos, characters, text, or real people from the image). Each is an isolated graphic for a black t-shirt, not a mockup, ${s.aspect} aspect ratio, written in ${s.lang}.${s.mascots !== 'off' ? ' Some may feature ' + BZ.MASCOTS.bizzle + ' or ' + BZ.MASCOTS.jinxy + '.' : ''}\n\nReturn JSON: {"analysis":"...", "trademark_concerns":"any brands/characters/people you noticed, or empty", "prompts":[{"title":"...", ${variantSpec(s.target)}, "style":"...", "text":"slogan or empty"}]}`;
+      const prompt = `Analyze this image (it may be a screenshot of trending shirts, a meme, a photo, or a sketch). 1) Briefly describe what's in it, the visual style, colors, and why it might appeal to t-shirt buyers. 2) Suggest ${n} ORIGINAL design-only t-shirt image prompts inspired by it (do not copy logos, characters, text, or real people from the image). Each is an isolated graphic for a black t-shirt, not a mockup, ${s.aspect} aspect ratio, written in ${s.lang}.${s.charactersOn ? ' Each design MUST feature the house characters from the trend context (they must appear in the artwork). Do NOT write a Character details or print-spec section.' : ''}\n\nReturn JSON: {"analysis":"...", "trademark_concerns":"any brands/characters/people you noticed, or empty", "prompts":[{"title":"...", ${variantSpec(s.target)}, "style":"...", "text":"slogan or empty"}]}`;
       const j = AI.parseJSON(await AI.call(aiArgs({ system: SYSTEM, prompt, image: state.image, json: true })));
       const box = $('#imgAnalysis'); box.hidden = false;
       box.textContent = (j.analysis || '') + (j.trademark_concerns ? '\n\n⚠ Trademark notes: ' + j.trademark_concerns : '');
@@ -681,7 +810,74 @@
       catch (err) { state.image = null; setAiStatus(err.friendly || 'Could not read that image.', 'error'); }
     });
     document.addEventListener('keydown', onKey);
-    window.addEventListener('hashchange', () => { if (applyHash()) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } $$('[data-bind]').forEach(el => setControl(el, state.settings[el.dataset.bind])); applyTheme(); pruneHidden(); renderPickers(); $('#seedLabel').textContent = state.settings.seed; saveSettings(); generate(); } });
+    window.addEventListener('hashchange', () => { if (applyHash()) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } $$('[data-bind]').forEach(el => setControl(el, state.settings[el.dataset.bind])); applyTheme(); pruneHidden(); renderPickers(); syncCharUI(); $('#seedLabel').textContent = state.settings.seed; saveSettings(); generate(); } });
+
+    // ---- Characters (panels + sticky bar) ----
+    document.addEventListener('change', e => {
+      const master = e.target.closest('[data-char-master]');
+      if (master) { setCharactersOn(master.checked); return; }
+      const chk = e.target.closest('[data-char-check]');
+      if (chk) { setCharacterChecked(chk.dataset.charCheck || chk.getAttribute('data-char-check'), chk.checked); }
+    });
+    document.addEventListener('click', e => {
+      if (e.target.id === 'charBarToggle' || e.target.closest('#charBarToggle')) {
+        setCharactersOn(!state.settings.charactersOn);
+        return;
+      }
+      if (e.target.id === 'charBarMenu' || e.target.closest('#charBarMenu')) {
+        openCharPopover(!state.charPopover);
+        return;
+      }
+      if (e.target.id === 'charBarClose' || e.target.closest('#charBarClose')) { openCharPopover(false); return; }
+      if (e.target.id === 'charBarEdit' || e.target.closest('#charBarEdit')) {
+        openCharPopover(false); showView('generate');
+        const panel = $('#charactersPanel'); if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+      // Click outside closes popover
+      if (state.charPopover && !e.target.closest('#charBar')) openCharPopover(false);
+
+      const actBtn = e.target.closest('[data-char-act]');
+      if (!actBtn) return;
+      const act = actBtn.dataset.charAct;
+      if (act === 'add') {
+        const id = 'custom_' + Date.now().toString(36);
+        state.characters.push({ id, name: 'New character', text: 'New character - describe looks, outfit, and voice.', avatar: '', emoji: '✨' });
+        state.settings.characterIds = checkedCharacterIds().concat([id]);
+        saveCharacters(); saveSettings(); syncCharUI(); toast('Character added'); return;
+      }
+      if (act === 'reset') {
+        state.characters = BZ.cloneDefaultCharacters();
+        state.charVersion = BZ.CHAR_DEFAULTS_VERSION;
+        state.settings.characterIds = state.characters.map(c => c.id);
+        saveCharacters(); saveSettings(); syncCharUI(); renderResults(); toast('Characters reset to defaults'); return;
+      }
+      const id = actBtn.dataset.charId;
+      const card = actBtn.closest('.char-card');
+      if (act === 'edit' && card) {
+        card.querySelector('.char-edit-row').hidden = false;
+        card.querySelector('.char-card-acts').hidden = true;
+        card.querySelector('.char-text-desktop') && (card.querySelector('.char-text-desktop').style.display = 'none');
+        card.querySelector('.char-details') && (card.querySelector('.char-details').style.display = 'none');
+        return;
+      }
+      if (act === 'cancel' && card) { syncCharUI(); return; }
+      if (act === 'save' && card) {
+        const c = state.characters.find(x => x.id === id); if (!c) return;
+        const name = (card.querySelector('[data-char-name]') || {}).value || c.name;
+        const txt = (card.querySelector('[data-char-text]') || {}).value || c.text;
+        c.name = String(name).trim().slice(0, 60) || c.name;
+        c.text = String(txt).trim().slice(0, 800) || c.text;
+        saveCharacters(); syncCharUI(); renderResults(); toast('Saved ' + c.name); return;
+      }
+      if (act === 'delete') {
+        if (state.characters.length <= 1) { toast('Keep at least one character (or reset to defaults).'); return; }
+        if (actBtn.dataset.confirm !== '1') { actBtn.dataset.confirm = '1'; actBtn.textContent = 'Confirm?'; setTimeout(() => { if (actBtn.isConnected) { actBtn.dataset.confirm = ''; actBtn.textContent = '🗑 Delete'; } }, 4000); return; }
+        state.characters = state.characters.filter(c => c.id !== id);
+        state.settings.characterIds = checkedCharacterIds().filter(x => x !== id);
+        saveCharacters(); saveSettings(); syncCharUI(); renderResults(); toast('Character deleted');
+      }
+    });
   }
 
   // ---------------- Init ----------------
@@ -694,6 +890,7 @@
     pruneHidden();
     $('#set-lang').innerHTML = BZ.LANGS.map(l => `<option>${esc(l)}</option>`).join('');
     renderThemes(); renderBanner(); renderPickers(); bindAll(); renderSpec(); renderProvider(); renderPacks(); renderTrends(); checkTrademarks();
+    syncCharUI();
     $('#avoidList').textContent = BZ.AVOID.join(' · ');
     $('#seedLabel').textContent = state.settings.seed;
     wire();
